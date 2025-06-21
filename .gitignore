@@ -1,0 +1,5 @@
+app.log #ログを記載
+flask.log #log
+__pycashe__/  
+test.py #testのために作ったファイル
+
