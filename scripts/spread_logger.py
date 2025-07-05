@@ -1,7 +1,25 @@
 import sqlite3
 import MetaTrader5 as mt5
+import logging, os
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
+
+# ❶ ログを書きたい場所（Wine から見える Z: パス）
+LOG_PATH = r"Z:\home\trader\my_project\sh_folder\logger.log"
+
+# ❷ ルートロガーを取得してレベルを決める
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# ❸ FileHandler を作成 ―― encoding='utf-8' がポイント
+fh = logging.FileHandler(LOG_PATH, encoding='utf-8')
+fh.setFormatter(logging.Formatter(
+    fmt="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+))
+
+# ❹ ロガーにハンドラを登録
+logger.addHandler(fh)
 
 # --- 通貨ペア分類マップ ---
 category_map = {
@@ -74,8 +92,6 @@ spread_data = get_categorized_spreads()
 conn = sqlite3.connect(r"Z:\home\trader\my_project\spread_data.db")
 cur = conn.cursor()
 
-print("spread_data.dbに接続しました")
-
 sql = (
 "CREATE TABLE IF NOT EXISTS spread_usdjpy ("
 "time TEXT,"
@@ -99,7 +115,7 @@ for row in spread_data["Majors"]:
             )
             
 brand_and_pips = (
-    "CREATE TABLE IF NOT EXISTS Brand_And_Pips("
+    "CREATE TABLE IF NOT EXISTS major_tabl("
     "brand TEXT,"
     "spread real"
     ")"
@@ -108,14 +124,22 @@ cur.execute(brand_and_pips)
 
 #銘柄とpipsのデータ登録
 
+logging.info("=== spread_logger started ===")
+create_majors = (
+    ""
+)
+
 for key,row in spread_data.items():
     for item in row:
-            print(f"保存中: {item[0]}, {item[1]}")
-            cur.execute(
-                "INSERT INTO Brand_And_Pips (brand, spread) VALUES(?,?)",
-                (item[0],item[1])
-                )
-print("INSERT完了:", spread_data)
+        if key == "Majors":
+            cur.execute("""
+            INSERT INTO major_table (brand, spread) VALUES(?,?),
+            (item[0],item[1])
+            """)
 
+logging.info("INSERT完了")
 conn.commit()
 conn.close()
+
+logging.info("=== spread_logger finished ===")
+print("logger.logに保存しました")
