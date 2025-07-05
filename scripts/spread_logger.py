@@ -92,50 +92,24 @@ spread_data = get_categorized_spreads()
 conn = sqlite3.connect(r"Z:\home\trader\my_project\spread_data.db")
 cur = conn.cursor()
 
-sql = (
-"CREATE TABLE IF NOT EXISTS spread_usdjpy ("
-"time TEXT,"
-"spread real"
-")"
-)
-cur.execute(sql)
-
-#登録データに追加
-
-for row in spread_data["Majors"]:
-    if row[0] == "USDJPY":
-        usdjpy_spread = row[1]
-        dt_now = datetime.now()
-
-        #データベースにINSERT
-        #if dt_now.minute in [0,30]:
-        cur.execute(
-            "INSERT INTO spread_usdjpy (time, spread) VALUES (?,?)",
-             (dt_now, usdjpy_spread)
-            )
-            
-brand_and_pips = (
-    "CREATE TABLE IF NOT EXISTS major_tabl("
-    "brand TEXT,"
-    "spread real"
-    ")"
-)
-cur.execute(brand_and_pips)
+# ---- テーブル作成（ループ処理）----            
+for key in category_map:
+    cur.execute(f"""
+    CREATE TABLE IF NOT EXISTS {key}_tbl (
+    brand TEXT,
+    spread REAL
+    ); 
+    """)
 
 #銘柄とpipsのデータ登録
 
 logging.info("=== spread_logger started ===")
-create_majors = (
-    ""
-)
-
 for key,row in spread_data.items():
     for item in row:
-        if key == "Majors":
-            cur.execute("""
-            INSERT INTO major_table (brand, spread) VALUES(?,?),
-            (item[0],item[1])
-            """)
+            cur.execute(
+                f"INSERT INTO {key}_tbl (brand, spread) VALUES(?,?);",
+                (item[0],item[1])
+            )
 
 logging.info("INSERT完了")
 conn.commit()
