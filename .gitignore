@@ -3,4 +3,10 @@ flask.log #log
 __pycashe__/  
 test.py #testのために作ったファイル
 spread_data.db  #spread_data
-
+mt5.log
+app.txt
+debug.log
+flask.log
+logger.log
+nohup.out
+profile.out
