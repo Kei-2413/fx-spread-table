@@ -7,18 +7,29 @@ import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 
-@app.route('/minor')
-def show_tbl_and_img():
+VALID_CATEGORIES = {
+    "major":   "Majors_tbl",
+    "minor":   "Minors_tbl",
+    "exotic":  "Exotics_tbl",
+    "metal":   "Metals_tbl",
+    "crypto":  "Cryptos_tbl",
+    "other":   "other_tbl",
+}
+
+@app.route('/spread/<category>')
+def show_spread(category):
     # 銘柄とスプレッドのテーブルを取得
     con = sqlite3.connect("spread_data.db")
     cur = con.cursor()
+    tbl = VALID_CATEGORIES[category]
+    page_title = f"{category} table"
         
-    cur.execute("""
+    cur.execute(f"""
     SELECT b.brand, b.spread
-    FROM Minors_tbl AS b
+    FROM  {tbl} AS b
     JOIN (
         SELECT brand, MAX(rowid) AS max_rowid   -- brand ごとに最新 rowid
-        FROM Minors_tbl
+        FROM {tbl}
         GROUP BY brand
     ) latest
     ON  b.brand = latest.brand
@@ -27,7 +38,7 @@ def show_tbl_and_img():
     SpreadData = cur.fetchall()
     con.close()            
 
-    return render_template('minor.html', SpreadData = SpreadData)
+    return render_template(f"{category}.html", SpreadData = SpreadData, page_title = page_title)
 
 
 if __name__ == '__main__':
