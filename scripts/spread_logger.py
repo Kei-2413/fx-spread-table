@@ -52,40 +52,52 @@ category_map = {
     "Other": []
 }
 
+# 収納データ
+categorized = {key: {} for key in category_map.keys()}
+
 # --- スプレッド取得・カテゴリ分け ---
-def get_categorized_spreads():
-    xm_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/terminal64.exe"
-    if not mt5.initialize(path=xm_path):
+def get_categorized_spreads(path,filterd_txt):
+    if not mt5.initialize(path):
         print("MT5初期化エラー:", mt5.last_error())
         return {}
 
-    categorized = {key: [] for key in category_map.keys()}
-
     for symbol in mt5.symbols_get():
-        name = symbol.name.split(".")[0]
-        if not name.isalpha():
+        raw_name = symbol.name
+        
+        # フィルターされたテキストのみ通す
+        if not raw_name.endswith(filterd_txt):
             continue
 
+        name = symbol.name.split(f"{filterd_txt}")[0]
+
         tick = mt5.symbol_info_tick(symbol.name)
+
         if tick and symbol.point > 0:
-            spread = (tick.ask - tick.bid) / (10 * symbol.point)
-            row = [name, round(spread, 2)]
+            spread = round((tick.ask - tick.bid) / (10 * symbol.point), 2)
 
             found = False
             for category, pairs in category_map.items():
                 if name in pairs:
-                    categorized[category].append(row)
+                    categorized[category][name] = []
+                    categorized[category][name].append(spread)
                     found = True
                     break
             if not found:
-                categorized["Other"].append(row)
+                categorized[category][name] = []
+                categorized["Other"][name].append(spread)
 
     mt5.shutdown()
-    return categorized
 
+standard_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/terminal64.exe"
+kiwami_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/KIWAMI/terminal64.exe"
+zero_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/Zero/terminal64.exe"
 
 # --- 実行 ---
-spread_data = get_categorized_spreads()
+xm_mt5_path = [standard_path, kiwami_path]
+
+for path in xm_mt5_path:
+    get_categorized_spreads(path)
+
 
 # --- データベース保存 ---
 
@@ -97,23 +109,21 @@ for key in category_map:
     cur.execute(f"""
     CREATE TABLE IF NOT EXISTS {key}_tbl (
     brand TEXT,
-    spread REAL
+    standard_spread REAL,
+    kiwami_spread REAL
+    
     ); 
     """)
 
 #銘柄とpipsのデータ登録
 
-logging.info("=== spread_logger started ===")
-for key,row in spread_data.items():
+for key,row in categorized.items():
     for item in row:
             cur.execute(
-                f"INSERT INTO {key}_tbl (brand, spread) VALUES(?,?);",
-                (item[0],item[1])
+                f"INSERT INTO {key}_tbl (brand, standard_spread, kiwami_spread) VALUES(?,?);",
+                (item[0],item[1],item[2])
             )
 
 logging.info("INSERT完了")
 conn.commit()
 conn.close()
-
-logging.info("=== spread_logger finished ===")
-print("logger.logに保存しました")
