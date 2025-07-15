@@ -116,6 +116,7 @@ cur = conn.cursor()
 
 # ---- テーブル作成（ループ処理）----            
 for key in category_map:
+    cur.execute(f"DROP TABLE IF EXISTS {key}_tbl;") #テーブルを消去
     cur.execute(f"""
     CREATE TABLE IF NOT EXISTS {key}_tbl (
     brand TEXT,
@@ -127,12 +128,12 @@ for key in category_map:
 
 #銘柄とpipsのデータ登録
 
-for key,row in spread_data.items():
-    for item in row:
-            cur.execute(
-                f"INSERT INTO {key}_tbl (brand, standard_spread, kiwami_spread) VALUES(?,?);",
-                (item[0],item[1],item[2])
-            )
+for cat,sp_dict in categorized_sp_data.items():
+    for pair,sp_list in sp_dict.items():
+        cur.execute(
+            f"INSERT INTO {cat}_tbl (brand, standard_spread, kiwami_spread) VALUES(?,?,?);",
+            (pair,sp_list[0],sp_list[1])
+        )
 
 logging.info("INSERT完了")
 conn.commit()

@@ -25,10 +25,10 @@ def show_spread(category):
     page_title = f"{category} table"
         
     cur.execute(f"""
-    SELECT b.brand, b.spread
+    SELECT b.brand, b.standard_spread, b.kiwami_spread
     FROM  {tbl} AS b
     JOIN (
-        SELECT brand, MAX(rowid) AS max_rowid   -- brand ごとに最新 rowid
+        SELECT brand, MAX(rowid) AS max_rowid
         FROM {tbl}
         GROUP BY brand
     ) latest
