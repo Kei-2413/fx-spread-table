@@ -1,0 +1,1 @@
+wine "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/KIWAMI/terminal64.exe" /portable

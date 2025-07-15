@@ -1,7 +1,6 @@
 import sqlite3
 import MetaTrader5 as mt5
 import logging, os
-from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 
 # ❶ ログを書きたい場所（Wine から見える Z: パス）
@@ -46,45 +45,40 @@ category_map = {
     ],
     "Cryptos": [
         "AAVEUSD", "ADAUSD", "ALGOUSD", "APEUSD", "APTUSD",
-        "ARBUSDT", "ATOMUSD", "AVAXUSD", "AXSUSD", "BATUSD",
+        "ATOMUSD", "AVAXUSD", "AXSUSD", "BATUSD",
         "BCHUSD", "BTCEUR", "BTCGBP", "BTCUSD"
     ],
     "Other": []
 }
 
 # 収納データ
-categorized = {key: {} for key in category_map.keys()}
+spread_data = {}
 
 # --- スプレッド取得・カテゴリ分け ---
-def get_categorized_spreads(path,filterd_txt):
+def get_categorized_spreads(path,filterd_txt,i):
     if not mt5.initialize(path):
         print("MT5初期化エラー:", mt5.last_error())
         return {}
-
+   
     for symbol in mt5.symbols_get():
+        tick = mt5.symbol_info_tick(symbol.name)    
         raw_name = symbol.name
+
+        # USDJPY# → USDJPY に透過する
+        symbol_name = raw_name.split(filterd_txt)[0] if filterd_txt else raw_name
         
-        # フィルターされたテキストのみ通す
-        if not raw_name.endswith(filterd_txt):
-            continue
+        # ----------------通行許可の条件--------------
+        if filterd_txt is not None:
+            if not raw_name.endswith(filterd_txt):continue
+        if not tick and symbol.point > 0:continue
+        # -------------------------------------------
 
-        name = symbol.name.split(f"{filterd_txt}")[0]
+        spread = round((tick.ask - tick.bid) / (10 * symbol.point), 2)
 
-        tick = mt5.symbol_info_tick(symbol.name)
-
-        if tick and symbol.point > 0:
-            spread = round((tick.ask - tick.bid) / (10 * symbol.point), 2)
-
-            found = False
-            for category, pairs in category_map.items():
-                if name in pairs:
-                    categorized[category][name] = []
-                    categorized[category][name].append(spread)
-                    found = True
-                    break
-            if not found:
-                categorized[category][name] = []
-                categorized["Other"][name].append(spread)
+        if symbol_name not in spread_data.keys():
+            spread_data[symbol_name] = ["-"] * 2
+        
+        spread_data[symbol_name][i] = spread
 
     mt5.shutdown()
 
@@ -93,11 +87,27 @@ kiwami_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/KIWAMI/ter
 zero_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/Zero/terminal64.exe"
 
 # --- 実行 ---
-xm_mt5_path = [standard_path, kiwami_path]
+xm_mt5_path = [standard_path,kiwami_path]
+filter_list = [None,"#"]
 
-for path in xm_mt5_path:
-    get_categorized_spreads(path)
+for i in range(2):
+    get_categorized_spreads(xm_mt5_path[i],filter_list[i],i)
 
+
+categorized_sp_data = {key: {} for key in category_map.keys()}
+
+# --- 2次元辞書の作成 ---
+
+for cat, sp_list in category_map.items():
+    for symbol in spread_data.keys():
+        if symbol in sp_list:
+            categorized_sp_data[cat][symbol] = spread_data[symbol]
+
+        else:
+            categorized_sp_data["Other"][symbol] = spread_data[symbol]
+        
+
+print(categorized_sp_data)
 
 # --- データベース保存 ---
 
@@ -117,7 +127,7 @@ for key in category_map:
 
 #銘柄とpipsのデータ登録
 
-for key,row in categorized.items():
+for key,row in spread_data.items():
     for item in row:
             cur.execute(
                 f"INSERT INTO {key}_tbl (brand, standard_spread, kiwami_spread) VALUES(?,?);",
