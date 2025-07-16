@@ -3,21 +3,21 @@ import MetaTrader5 as mt5
 import logging, os
 from datetime import datetime, timedelta
 
-# ❶ ログを書きたい場所（Wine から見える Z: パス）
+# ログを書きたい場所（Wine から見える Z: パス）
 LOG_PATH = r"Z:\home\trader\my_project\sh_folder\logger.log"
 
-# ❷ ルートロガーを取得してレベルを決める
+# ルートロガーを取得してレベルを決める
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# ❸ FileHandler を作成 ―― encoding='utf-8' がポイント
+# FileHandler を作成 
 fh = logging.FileHandler(LOG_PATH, encoding='utf-8')
 fh.setFormatter(logging.Formatter(
     fmt="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 ))
 
-# ❹ ロガーにハンドラを登録
+# ロガーにハンドラを登録
 logger.addHandler(fh)
 
 # --- 通貨ペア分類マップ ---
@@ -76,7 +76,7 @@ def get_categorized_spreads(path,filterd_txt,i):
         spread = round((tick.ask - tick.bid) / (10 * symbol.point), 2)
 
         if symbol_name not in spread_data.keys():
-            spread_data[symbol_name] = ["-"] * 2
+            spread_data[symbol_name] = ["-"] * 3
         
         spread_data[symbol_name][i] = spread
 
@@ -87,10 +87,10 @@ kiwami_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/KIWAMI/ter
 zero_path = "/home/trader/.wine/drive_c/Program Files/XMTrading MT5/Zero/terminal64.exe"
 
 # --- 実行 ---
-xm_mt5_path = [standard_path,kiwami_path]
-filter_list = [None,"#"]
+xm_mt5_path = [standard_path,kiwami_path, zero_path]
+filter_list = [None,"#", "."]
 
-for i in range(2):
+for i in range(len(xm_mt5_path)):
     get_categorized_spreads(xm_mt5_path[i],filter_list[i],i)
 
 
@@ -121,8 +121,8 @@ for key in category_map:
     CREATE TABLE IF NOT EXISTS {key}_tbl (
     brand TEXT,
     standard_spread REAL,
-    kiwami_spread REAL
-    
+    kiwami_spread REAL,
+    zero_spread REAL
     ); 
     """)
 
@@ -131,8 +131,8 @@ for key in category_map:
 for cat,sp_dict in categorized_sp_data.items():
     for pair,sp_list in sp_dict.items():
         cur.execute(
-            f"INSERT INTO {cat}_tbl (brand, standard_spread, kiwami_spread) VALUES(?,?,?);",
-            (pair,sp_list[0],sp_list[1])
+            f"INSERT INTO {cat}_tbl (brand, standard_spread, kiwami_spread, zero_spread) VALUES(?,?,?,?);",
+            (pair, sp_list[0], sp_list[1], sp_list[2])
         )
 
 logging.info("INSERT完了")

@@ -25,7 +25,7 @@ def show_spread(category):
     page_title = f"{category} table"
         
     cur.execute(f"""
-    SELECT b.brand, b.standard_spread, b.kiwami_spread
+    SELECT b.brand, b.standard_spread, b.kiwami_spread, b.zero_spread
     FROM  {tbl} AS b
     JOIN (
         SELECT brand, MAX(rowid) AS max_rowid
